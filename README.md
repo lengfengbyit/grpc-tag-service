@@ -39,3 +39,7 @@ grpcurl -plaintext localhost:8080 list proto.TagServer
 grpcurl -plaintext -d '{"name":"Go"}' 127.0.0.1:8080 proto.TagService.GetTagList
 ```
 
+3. grpc状态码
+![grpc状态码1](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221159.png)
+![grpc状态码2](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221306.png)
+
