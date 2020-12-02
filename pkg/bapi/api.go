@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -31,8 +32,39 @@ func NewAPI(url string) *API {
 	return &API{URL: url}
 }
 
+func (api *API) httpDo(ctx context.Context, method, path string, param url.Values) ([]byte, error) {
+
+	token, err := api.getAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := http.Client{}
+	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", api.URL, path), strings.NewReader(param.Encode()))
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("token", token)
+
+	log.Printf("http %s path: %s, param: %v", method, path, param)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
 func (api *API) httpGet(ctx context.Context, path string) ([]byte, error) {
-	log.Printf("http get url: %s", path)
+	log.Printf("http get path: %s", path)
 	resp, err := http.Get(fmt.Sprintf("%s/%s", api.URL, path))
 	if err != nil {
 		return nil, err
@@ -78,18 +110,11 @@ func (api *API) getAccessToken(ctx context.Context) (string, error) {
 }
 
 func (api *API) GetTagList(ctx context.Context, name string) ([]byte, error) {
-	token, err := api.getAccessToken(ctx)
+
+	path := fmt.Sprintf("api/v1/tags?name=%s", name)
+	body, err := api.httpDo(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
-	}
-
-	body, err := api.httpGet(ctx, fmt.Sprintf(
-		"%s?token=%s&name=%s",
-		"api/v1/tags",
-		token, name,
-	))
-	if err != nil {
-		return nil, nil
 	}
 
 	return body, err

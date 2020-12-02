@@ -66,5 +66,6 @@ go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
 - 重新编译proto文件
 ```bash
 // -I 参数执行 proto 文件中 import 的搜索目录， 不指定则为当前目录
-protoc -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis -I. -I$GOPATH/src --go_out=plugins=grpc:. ./proto/*proto
+// 该命令会再proto目录下生产一个 .pb.gw.go的文件， 如果配置好了的话
+protoc -I/Users/fym/Documents/code/go/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis -I. -I$GOPATH/src --grpc-gateway_out=logtostderr=true:. ./proto/*proto
 ```

@@ -28,7 +28,7 @@ func (t *TagServer) GetTagList(ctx context.Context, r *pb.GetTagListRequest) (*p
 	tagList := &pb.GetTagListReply{}
 	err = json.Unmarshal(body, tagList)
 	if err != nil {
-		log.Println("GetTagList json.Unmarshal err: %v", err)
+		log.Printf("GetTagList json.Unmarshal err: %v", err)
 		return nil, errcode.TogRPCError(errcode.ErrorGetTagListFail)
 	}
 	return tagList, nil
