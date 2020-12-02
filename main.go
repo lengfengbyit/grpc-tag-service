@@ -3,66 +3,69 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/soheilhy/cmux"
 	pb "go-tour/grpc-tag-service/proto"
 	"go-tour/grpc-tag-service/server"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
 	"net/http"
-
-	"google.golang.org/grpc/reflection"
 )
 
-var grpcPort string
-var httpPort string
+// HTTP and GRPC
+var port string
 
 func init() {
-	flag.StringVar(&grpcPort, "grpc_port", "8001", "server listen grpc port")
-	flag.StringVar(&httpPort, "http_port", "9001", "server listen http port")
+	flag.StringVar(&port, "port", "8001", "server listen port")
 	flag.Parse()
 }
 
 func main() {
-	errs := make(chan error)
-	go func() {
-		err := RunHttpServer(httpPort)
-		if err != nil {
-			errs <- err
-		}
-	}()
+	lis, err := RunTCPServer(port)
+	if err != nil {
+		log.Fatalf("Run tcp server err: %v", err)
+	}
 
-	go func() {
-		err := RunGrpcServer(grpcPort)
-		if err != nil {
-			errs <- err
-		}
-	}()
+	m := cmux.New(lis)
+	grpcLis := m.MatchWithWriters(
+		cmux.HTTP2MatchHeaderFieldPrefixSendSettings(
+			"content-type",
+			"application/grpc",
+		),
+	)
+	httpLis := m.Match(cmux.HTTP1Fast())
 
-	select {
-	case err := <-errs:
-		log.Fatalf("Run server err: %s", err)
+	grpcSer := RunGrpcServer()
+	httpSer := RunHttpServer()
+	go grpcSer.Serve(grpcLis)
+	go httpSer.Serve(httpLis)
+
+	err = m.Serve()
+	if err != nil {
+		log.Fatalf("Run serve err: ", err)
 	}
 }
 
-func RunHttpServer(port string) error {
-	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`pong`))
-	})
-
-	fmt.Println("Http server listen: http://localhost:" + port)
-	return http.ListenAndServe(":"+port, serveMux)
+func RunTCPServer(port string) (net.Listener, error) {
+	fmt.Println("Server (http and grpc) listen http://localhost:" + port)
+	return net.Listen("tcp", ":"+port)
 }
 
-func RunGrpcServer(port string) error {
+func RunGrpcServer() *grpc.Server {
 	s := grpc.NewServer()
 	pb.RegisterTagServiceServer(s, server.NewTagServer())
 	reflection.Register(s)
-	lis, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return err
-	}
+	return s
+}
 
-	fmt.Println("GRPC Server listen: http://localhost:" + port)
-	return s.Serve(lis)
+func RunHttpServer() *http.Server {
+	serverMux := http.NewServeMux()
+	serverMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`pong`))
+	})
+	return &http.Server{
+		Addr:    ":" + port,
+		Handler: serverMux,
+	}
 }

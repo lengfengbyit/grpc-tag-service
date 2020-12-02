@@ -43,3 +43,28 @@ grpcurl -plaintext -d '{"name":"Go"}' 127.0.0.1:8080 proto.TagService.GetTagList
 ![grpc状态码1](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221159.png)
 ![grpc状态码2](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221306.png)
 
+4. 在同端口监听HTTP和GRPC
+> 通过开源库实现，cmux根据有效负载(payload)对连接进行多路复用(只匹配连接的前面的字节来区分当前连接的类型), 可以在同一 TCP Listener上提供gRPC,SSH,HTTPS,HTTP和Go RPC等几乎所有其他协议的服务，是一个相对通用的方案
+
+- 下载 cmux
+```bash
+go get -u github.com/soheilhy/cmux
+```
+
+5. 同端口同方法提供双流量支持 grpc-gateway
+> grpc-gateway是protoc的一个插件，它能够读取Protobuf的服务定义，生成一个反向代理服务器，将RESTful Json API转换为gRPC。 它主要是根据Protobuf的服务定义中的google.api.http来生成的。
+
+![grpc-gateway架构图](https://gitee.com/fym321/picgo/raw/master/imgs/20201202143717.png)
+
+> 简单的来说， grpc-gateway能够将RESTful转换为gRPC请求，实现用同一个RPC方法提供gRPC协议和HTTP/1.1的双流量支持。
+
+- 安装grpc-gateay
+```bash
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
+```
+
+- 重新编译proto文件
+```bash
+// -I 参数执行 proto 文件中 import 的搜索目录， 不指定则为当前目录
+protoc -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis -I. -I$GOPATH/src --go_out=plugins=grpc:. ./proto/*proto
+```
