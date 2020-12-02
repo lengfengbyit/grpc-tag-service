@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"go-tour/grpc-tag-service/pkg/swagger"
 	pb "go-tour/grpc-tag-service/proto"
 	"go-tour/grpc-tag-service/server"
 	"golang.org/x/net/http2"
@@ -16,6 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -61,6 +64,25 @@ func runHttpServer() *http.ServeMux {
 	serverMux := http.NewServeMux()
 	serverMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`pong`))
+	})
+
+	// 访问 swagger-ui
+	prefix := "/swagger-ui/"
+	fileServer := http.FileServer(&assetfs.AssetFS{
+		Asset:    swagger.Asset,
+		AssetDir: swagger.AssetDir,
+		Prefix:   "third_party/swagger-ui",
+	})
+	serverMux.Handle(prefix, http.StripPrefix(prefix, fileServer))
+	serverMux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "swagger.json") {
+			http.NotFound(w, r)
+			return
+		}
+
+		p := strings.TrimPrefix(r.URL.Path, "/swagger/")
+		p = path.Join("proto", p)
+		http.ServeFile(w, r, p)
 	})
 	return serverMux
 }

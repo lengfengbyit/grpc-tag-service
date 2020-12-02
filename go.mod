@@ -3,7 +3,9 @@ module go-tour/grpc-tag-service
 go 1.14
 
 require (
+	github.com/elazarl/go-bindata-assetfs v1.0.1 // indirect
 	github.com/fullstorydev/grpcurl v1.7.0 // indirect
+	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	golang.org/x/net v0.0.0-20201201195509-5d6afe98e0b7 // indirect

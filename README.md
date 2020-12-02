@@ -69,3 +69,28 @@ go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
 // 该命令会再proto目录下生产一个 .pb.gw.go的文件， 如果配置好了的话
 protoc -I/Users/fym/Documents/code/go/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis -I. -I$GOPATH/src --grpc-gateway_out=logtostderr=true:. ./proto/*proto
 ```
+
+6. 接口文档
+> 使用 protoc-gen-swagger 来根据 protoc 文件自动生成 swagger 定义
+
+- 安装插件
+```bash
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+```
+
+- 使用 bindata 将资源转为 go 文件
+```bash
+# 下载
+go get -u github.com/go-bindata/go-bindata/...
+# 将资源转为go文件
+go-bindata --nocompress -pkg swagger -o pkg/swagger/data.go third_party/swagger-ui/...
+# 让静态资源代码能够被外部访问，该库结合net/http标准库和go-bindata库生成的
+# swagger ui的go代码供外部访问
+go get -u github.com/elazarl/go-bindata-assetfs/...
+
+# 生成swagger.json文件
+protoc -I$GOPATH/src -I. -I$GOPATH/src \
+-I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis \
+--swagger_out=logtostderr=true:. ./proto/*.proto
+
+```
