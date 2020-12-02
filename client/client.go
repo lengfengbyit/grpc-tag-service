@@ -14,7 +14,7 @@ var port string
 
 func init() {
 	flag.StringVar(&host, "host", "localhost", "Server listen ip")
-	flag.StringVar(&port, "port", "8080", "Server listen port")
+	flag.StringVar(&port, "port", "8001", "Server listen port")
 	flag.Parse()
 }
 

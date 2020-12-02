@@ -8,32 +8,61 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"net/http"
 
 	"google.golang.org/grpc/reflection"
 )
 
-var port string
+var grpcPort string
+var httpPort string
 
 func init() {
-	flag.StringVar(&port, "port", "8080", "server listen port")
+	flag.StringVar(&grpcPort, "grpc_port", "8001", "server listen grpc port")
+	flag.StringVar(&httpPort, "http_port", "9001", "server listen http port")
 	flag.Parse()
 }
 
 func main() {
+	errs := make(chan error)
+	go func() {
+		err := RunHttpServer(httpPort)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	go func() {
+		err := RunGrpcServer(grpcPort)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	select {
+	case err := <-errs:
+		log.Fatalf("Run server err: %s", err)
+	}
+}
+
+func RunHttpServer(port string) error {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`pong`))
+	})
+
+	fmt.Println("Http server listen: http://localhost:" + port)
+	return http.ListenAndServe(":"+port, serveMux)
+}
+
+func RunGrpcServer(port string) error {
 	s := grpc.NewServer()
 	pb.RegisterTagServiceServer(s, server.NewTagServer())
-	// 注册服务，方便使用grpcurl调试
-	// grpcurl -plaintext localhost:8080 list 查看服务列表
 	reflection.Register(s)
-
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.Fatalf("net.Listen err: %s", err)
+		return err
 	}
 
-	fmt.Println("Server listen: http://127.0.0.1:" + port)
-	err = s.Serve(lis)
-	if err != nil {
-		log.Fatalf("server.Serve err: %s", err)
-	}
+	fmt.Println("GRPC Server listen: http://localhost:" + port)
+	return s.Serve(lis)
 }
