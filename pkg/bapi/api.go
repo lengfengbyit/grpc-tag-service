@@ -32,22 +32,25 @@ func NewAPI(url string) *API {
 	return &API{URL: url}
 }
 
-func (api *API) httpDo(ctx context.Context, method, path string, param url.Values) ([]byte, error) {
-
-	token, err := api.getAccessToken(ctx)
-	if err != nil {
-		return nil, err
+func (api *API) httpDo(ctx context.Context, method, path, token string, param url.Values) ([]byte, error) {
+	client := http.Client{
+		Timeout: 10 * time.Second,
 	}
-
-	client := http.Client{}
-	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", api.URL, path), strings.NewReader(param.Encode()))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		method,
+		fmt.Sprintf("%s/%s", api.URL, path),
+		strings.NewReader(param.Encode()),
+	)
 
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("token", token)
+	if token != "" {
+		req.Header.Set("token", token)
+	}
 
 	log.Printf("http %s path: %s, param: %v", method, path, param)
 	resp, err := client.Do(req)
@@ -76,18 +79,7 @@ func (api *API) httpGet(ctx context.Context, path string) ([]byte, error) {
 }
 
 func (api *API) httpPost(ctx context.Context, path string, param url.Values) ([]byte, error) {
-
-	log.Printf("http post url: %s, param: %v", path, param)
-	resp, err := http.PostForm(
-		fmt.Sprintf("%s/%s", api.URL, path),
-		param,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, nil := api.httpDo(ctx, "POST", path, "", param)
 	return body, nil
 }
 
@@ -110,9 +102,9 @@ func (api *API) getAccessToken(ctx context.Context) (string, error) {
 }
 
 func (api *API) GetTagList(ctx context.Context, name string) ([]byte, error) {
-
+	token, _ := api.getAccessToken(ctx)
 	path := fmt.Sprintf("api/v1/tags?name=%s", name)
-	body, err := api.httpDo(ctx, "GET", path, nil)
+	body, err := api.httpDo(ctx, "GET", path, token, nil)
 	if err != nil {
 		return nil, err
 	}

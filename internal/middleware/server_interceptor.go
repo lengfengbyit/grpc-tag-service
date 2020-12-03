@@ -21,7 +21,7 @@ func AccessLog(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
 
 	resp, err := handler(ctx, req)
 
-	responseLog := "[access response log]: method: %s, begin time: %s, end time: %d, response: %v"
+	responseLog := "[access response log]: method: %s, begin time: %s, end time: %s, response: %v"
 	endTime := time.Now().Local().Format(dateLayout)
 	log.Printf(responseLog, info.FullMethod, beginTime, endTime, resp)
 

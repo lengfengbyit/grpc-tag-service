@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"go-tour/grpc-tag-service/internal/middleware"
 	pb "go-tour/grpc-tag-service/proto"
 	"google.golang.org/grpc"
 	"log"
@@ -38,5 +40,22 @@ func main() {
 
 func GetClientConn(ctx context.Context, target string, opts []grpc.DialOption) (*grpc.ClientConn, error) {
 	opts = append(opts, grpc.WithInsecure())
+
+	// 注册客户端一元拦截器
+	opts = append(opts, grpc.WithUnaryInterceptor(
+		grpc_middleware.ChainUnaryClient(
+			middleware.UnaryRetry(),
+			middleware.UnaryContextTimeout(),
+		),
+	))
+
+	// 注册客户端流拦截器
+	opts = append(opts, grpc.WithChainStreamInterceptor(
+		grpc_middleware.ChainStreamClient(
+			middleware.StreamRetry(),
+			middleware.StreamContextTimeout(),
+		),
+	))
+
 	return grpc.DialContext(ctx, target, opts...)
 }
