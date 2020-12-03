@@ -6,7 +6,9 @@ import (
 	"flag"
 	"fmt"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"go-tour/grpc-tag-service/internal/middleware"
 	"go-tour/grpc-tag-service/pkg/swagger"
 	pb "go-tour/grpc-tag-service/proto"
 	"go-tour/grpc-tag-service/server"
@@ -54,7 +56,15 @@ func RunServer(port string) error {
 }
 
 func runGrpcServer() *grpc.Server {
-	s := grpc.NewServer()
+	opts := []grpc.ServerOption{
+		// 注册中间件
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			middleware.Recovery,
+			middleware.AccessLog,
+			middleware.ErrorLog,
+		)),
+	}
+	s := grpc.NewServer(opts...)
 	pb.RegisterTagServiceServer(s, server.NewTagServer())
 	reflection.Register(s)
 	return s
@@ -75,7 +85,8 @@ func runHttpServer() *http.ServeMux {
 	})
 	serverMux.Handle(prefix, http.StripPrefix(prefix, fileServer))
 	serverMux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "swagger.json") {
+		log.Printf("url: %s", r.URL.Path)
+		if !strings.HasSuffix(r.URL.Path, "swagger.json") {
 			http.NotFound(w, r)
 			return
 		}
