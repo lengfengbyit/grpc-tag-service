@@ -41,11 +41,11 @@ grpcurl -plaintext localhost:8080 list proto.TagServer
 grpcurl -plaintext -d '{"name":"Go"}' 127.0.0.1:8080 proto.TagService.GetTagList
 ```
 
-3. grpc状态码
+### grpc状态码
 ![grpc状态码1](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221159.png)
 ![grpc状态码2](https://gitee.com/fym321/picgo/raw/master/imgs/20201201221306.png)
 
-4. 在同端口监听HTTP和GRPC
+### 在同端口监听HTTP和GRPC
 > 通过开源库实现，cmux根据有效负载(payload)对连接进行多路复用(只匹配连接的前面的字节来区分当前连接的类型), 可以在同一 TCP Listener上提供gRPC,SSH,HTTPS,HTTP和Go RPC等几乎所有其他协议的服务，是一个相对通用的方案
 
 - 下载 cmux
@@ -53,7 +53,7 @@ grpcurl -plaintext -d '{"name":"Go"}' 127.0.0.1:8080 proto.TagService.GetTagList
 go get -u github.com/soheilhy/cmux
 ```
 
-5. 同端口同方法提供双流量支持 grpc-gateway
+### 同端口同方法提供双流量支持 grpc-gateway
 > grpc-gateway是protoc的一个插件，它能够读取Protobuf的服务定义，生成一个反向代理服务器，将RESTful Json API转换为gRPC。 它主要是根据Protobuf的服务定义中的google.api.http来生成的。
 
 ![grpc-gateway架构图](https://gitee.com/fym321/picgo/raw/master/imgs/20201202143717.png)
@@ -72,7 +72,7 @@ go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
 protoc -I/Users/fym/Documents/code/go/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis -I. -I$GOPATH/src --grpc-gateway_out=logtostderr=true:. ./proto/*proto
 ```
 
-6. 接口文档
+### 接口文档
 > 使用 protoc-gen-swagger 来根据 protoc 文件自动生成 swagger 定义
 
 - 安装插件
@@ -97,7 +97,7 @@ protoc -I$GOPATH/src -I. -I$GOPATH/src \
 
 ```
 
-7. gRPC拦截器
+### gRPC拦截器
 - 一元拦截器(Unary Interceptor): 拦截和处理一元RPC调用
 - 流拦截器(Stream Interceptor): 拦截和处理流式RPC调用
 
@@ -173,5 +173,50 @@ opts := []grpc.ServerOption{
     )),
 }
 s := grpc.NewServer(opts...)
+```
+
+### metadata
+> 在http/1.1中， 我们常常通过Header来传递数据，而在gRPC中，因为他是基于HTTP/2的，所以本质上也可以通过Header来传递数据，但不是直接去操纵它，
+> 而是通过gRPC中的metadata来进行传递和操作的， 使用metadata需要我们使用的库支持。
+
+1. metadata 数据结构
+```go
+type MD map[string][]string
+```
+
+2. 创建 metadata
+- google.golang.org/grpc/metadata 提供两个方法来创建metadata,第一种是metadata.New方法，如下
+```go
+metadata.New(map[string]string{"go":"Hello", "php": "World"})
+```
+使用New方法创建的metadata会直接被转换MD结构，如下
+```go
+map[
+    go:[]string{"Hello"}
+    php:[]string{"world"}
+]
+```
+
+- 第二种是 metadata.Pairs 方法， 如下
+```go
+metadata.Pairs(
+    "go", "Hello",
+    "php", "World",
+)
+```
+
+> 通过抓包分析， 实际上 metadata 也是通过 header 来传递数据的。
+
+### 对RPC方法做自定义认证
+
+如果需要对某些模块的RPC方法做特殊认证或校验，可以使用 grpc 提供的 Token 接口，代码如下：
+
+```go
+type PerRPCCredentials interface {
+    // 获取当前请求认证所需的元数据
+	GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error)
+    // 是否需要基于TLS认证进行安全传输
+	RequireTransportSecurity() bool
+}
 ```
 

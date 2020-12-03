@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"go-tour/grpc-tag-service/pkg/auth"
 	"go-tour/grpc-tag-service/pkg/bapi"
 	"go-tour/grpc-tag-service/pkg/errcode"
 	pb "go-tour/grpc-tag-service/proto"
@@ -11,13 +12,19 @@ import (
 
 const API_DOMAIN = "http://127.0.0.1:8000"
 
-type TagServer struct{}
+type TagServer struct {
+	auth *auth.Auth
+}
 
 func NewTagServer() *TagServer {
 	return &TagServer{}
 }
 
 func (t *TagServer) GetTagList(ctx context.Context, r *pb.GetTagListRequest) (*pb.GetTagListReply, error) {
+	// 权限检查
+	if err := t.auth.Check(ctx); err != nil {
+		return nil, err
+	}
 	api := bapi.NewAPI(API_DOMAIN)
 	body, err := api.GetTagList(ctx, r.GetName())
 	if err != nil {

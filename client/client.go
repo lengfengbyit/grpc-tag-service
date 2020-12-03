@@ -27,7 +27,8 @@ func getServerAddr() string {
 // grpc 客户端
 func main() {
 	ctx := context.Background()
-	clientConn, _ := GetClientConn(ctx, getServerAddr(), nil)
+	opts := []grpc.DialOption{grpc.WithPerRPCCredentials(NewAuth())}
+	clientConn, _ := GetClientConn(ctx, getServerAddr(), opts)
 	defer clientConn.Close()
 
 	tagServerClient := pb.NewTagServiceClient(clientConn)
