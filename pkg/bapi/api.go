@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -32,20 +34,41 @@ func NewAPI(url string) *API {
 	return &API{URL: url}
 }
 
+func (api *API) setTracing(ctx context.Context, url string, req *http.Request) *http.Request {
+	// 设置链路追踪
+	span, newCtx := opentracing.StartSpanFromContext(
+		ctx, "HTTP GET: "+api.URL,
+		opentracing.Tag{
+			Key:   string(ext.Component),
+			Value: "HTTP",
+		},
+	)
+	span.SetTag("url", url)
+	_ = opentracing.GlobalTracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
+	return req.WithContext(newCtx)
+}
+
 func (api *API) httpDo(ctx context.Context, method, path, token string, param url.Values) ([]byte, error) {
 	client := http.Client{
 		Timeout: 10 * time.Second,
 	}
+	uri := fmt.Sprintf("%s/%s", api.URL, path)
 	req, err := http.NewRequestWithContext(
 		ctx,
 		method,
-		fmt.Sprintf("%s/%s", api.URL, path),
+		uri,
 		strings.NewReader(param.Encode()),
 	)
-
 	if err != nil {
 		return nil, err
 	}
+
+	// 设置链路追踪
+	req = api.setTracing(ctx, uri, req)
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if token != "" {

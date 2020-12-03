@@ -47,6 +47,7 @@ func GetClientConn(ctx context.Context, target string, opts []grpc.DialOption) (
 		grpc_middleware.ChainUnaryClient(
 			middleware.UnaryRetry(),
 			middleware.UnaryContextTimeout(),
+			middleware.ClientTracing(),
 		),
 	))
 

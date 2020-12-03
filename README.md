@@ -220,3 +220,39 @@ type PerRPCCredentials interface {
 }
 ```
 
+### 链路追踪 grpc + jaeger
+1. 注入追踪信息
+> 做链路追踪的基本条件就是要注入追踪信息，最简单的方式莫过于使用拦截器实现
+
+- 服务端拦截器： 从metadata中提取链路信息，并将其设置追踪到服务端的上下文中。
+- 客户端拦截器: 从调用的上下文中提取链路信息，并作为metadata追缴到RPC的调用中
+
+2. 下载 jaeger
+```shell script
+go get -u github.com/opentracing/opentracing-go@v1.2.0
+go get -u github.com/uber/jaeger-client-go@v1.6.0
+```
+
+3. metadata的读取和配置
+在OPenTracing中，可以指定SpanContexts的三种传输表达方式，代码如下:
+```go
+type BuiltinFormat byte
+const (
+    // 不透明的二进制数据
+    Binary BuiltinFormat = iota
+    // 键值字符串对
+    TextMap
+    // HTTP header 格式的字符串
+    HTTPHeaders
+)
+
+type TextMapWriter interface {
+    Set(key, val string)
+}
+
+type TextMapReader interface {
+    ForeachKey(handler func(key, val string) error) error
+}
+```
+
+

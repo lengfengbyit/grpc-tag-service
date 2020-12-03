@@ -10,6 +10,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"go-tour/grpc-tag-service/internal/middleware"
 	"go-tour/grpc-tag-service/pkg/swagger"
+	"go-tour/grpc-tag-service/pkg/tracer"
 	pb "go-tour/grpc-tag-service/proto"
 	"go-tour/grpc-tag-service/server"
 	"golang.org/x/net/http2"
@@ -35,6 +36,12 @@ type httpError struct {
 func init() {
 	flag.StringVar(&port, "port", "8001", "server listen port")
 	flag.Parse()
+
+	// 设置 tracer 配置
+	err := setupTracer()
+	if err != nil {
+		log.Fatalf("setupTracer err: %v",err)
+	}
 }
 
 func main() {
@@ -60,6 +67,7 @@ func runGrpcServer() *grpc.Server {
 		// 注册中间件
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			middleware.Recovery,
+			middleware.ServerTracing,
 			middleware.AccessLog,
 			middleware.ErrorLog,
 		)),
@@ -141,4 +149,16 @@ func grpcGatewayError(ctx context.Context, _ *runtime.ServeMux, marshaler runtim
 	w.Header().Set("Content-Type", marshaler.ContentType())
 	w.WriteHeader(runtime.HTTPStatusFromCode(s.Code())) // 将grpc错误码转换成http的状态码
 	_, _ = w.Write(resp)
+}
+
+func setupTracer() error {
+	_, _, err := tracer.NewJaegerTracer(
+		"grpc-tag-service",
+		"127.0.0.1:6831",
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
